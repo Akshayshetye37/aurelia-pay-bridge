@@ -65,6 +65,13 @@ class NonceReplayGuardTest {
         }
     }
 
+    @Test fun clockRegressionFailsClosedWithoutDroppingReplayRecords() {
+        val guard = NonceReplayGuard(ttlMillis = 1000, maxEntries = 10)
+        assertTrue(guard.accept("nonce-clock-regression", 100))
+        assertFalse(guard.accept("nonce-another-value", 99))
+        assertFalse(guard.accept("nonce-clock-regression", 101))
+    }
+
     @Test fun rejectsBlankNonceAndInvalidClock() {
         val guard = NonceReplayGuard()
         assertFalse(guard.accept("", 1))
