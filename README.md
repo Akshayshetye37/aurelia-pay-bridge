@@ -2,6 +2,22 @@
 
 Standalone Android companion application for Aurelia PMS. This repository owns native checkout UI, provider SDK adapters, and the authenticated Messenger IPC service consumed by Aurelia PMS.
 
+## Current implementation status
+
+This repository is **not yet a production payment application**. The current app implements a fail-closed, PMS-compatible protocol-v1 handshake only. It does not create charges, invoke provider SDKs, issue refunds, reconcile transactions, or report verified payments. The app advertises only `handshake`.
+
+## PMS IPC contract
+
+The service component is `com.aurelia.paybridge/.ipc.PayBridgeService`. It implements the wire contract in the PMS repository's `android/templates/PayBridgeProtocol.java` and `android/templates/PayBridgeClient.java`:
+
+- PMS package: `com.aurelia.pms`
+- Service permission: `com.aurelia.paybridge.permission.BIND_PAY_BRIDGE`
+- Request: protocol range (`protocolMin`, `protocolMax`), caller package and nonce; response: selected protocol version, echoed nonce, bridge package and JSON capabilities (`capabilitiesJson`).
+- The service checks that the Binder caller UID owns the expected PMS package and that PMS and Pay Bridge have the same Android signing identity.
+- The Android signature permission also requires both APKs to use the same approved signing identity.
+
+Do not use debug signing for a production pairing. Provision one controlled release signing identity and use it for both APKs. The production certificate and keystore must be supplied through protected release infrastructure, never committed to this repository.
+
 ## Security boundary
 
 - **Never put provider API secrets, webhook secrets, PayU salt, PhonePe client secrets, or private keys in this APK.**
@@ -10,20 +26,16 @@ Standalone Android companion application for Aurelia PMS. This repository owns n
 - SDK callbacks are UX signals only. The backend verifies provider status/webhooks; PMS posts only backend-verified payment events.
 - This repository does not include production credentials, signing keys, or a live payment backend.
 
-## Current baseline
+## SDK dependency inventory (not completed adapters)
 
-- Android application ID: `com.aurelia.paybridge`
-- IPC service: `com.aurelia.paybridge/.ipc.PayBridgeService`
-- Protocol: version 1 (handshake only in this baseline)
-- Min SDK: 23; compile/target SDK: 35
-- Provider SDK dependencies are pinned to versions confirmed in the linked provider documentation:
-  - Razorpay Android Standard Checkout: `com.razorpay:checkout:1.6.41`
-  - Cashfree PG Android: `com.cashfree.pg:api:2.6.1`
-  - PayU Core Android: `in.payu:payu-sdk:7.12.3`
-  - PayU Custom Browser: `in.payu:payu-custom-browser:7.16.6`
-  - PayU UPI SDK: `in.payu:upisdk:1.8.8` (only if UPI Intent/Collect support is enabled)
-  - PhonePe Intent SDK used by PayU integration: `in.payu:phonepe-intent:1.8.9` from PhonePe's official Maven repository.
-- These are dependencies, not completed provider adapters. Each adapter must be implemented against its provider's current integration guide and verified with sandbox credentials before being advertised as supported.
+- Razorpay Android Standard Checkout: `com.razorpay:checkout:1.6.41`
+- Cashfree PG Android: `com.cashfree.pg:api:2.6.1`
+- PayU Core Android: `in.payu:payu-sdk:7.12.3`
+- PayU Custom Browser: `in.payu:payu-custom-browser:7.16.6`
+- PayU UPI SDK: `in.payu:upisdk:1.8.8`
+- PhonePe Intent SDK via PayU: `in.payu:phonepe-intent:1.8.9`
+
+These dependencies are not proof of SDK resolution, runtime compatibility, or completed provider adapters. Keep only dependencies used by implemented and tested adapters before a production release.
 
 ## Build
 
@@ -35,16 +47,18 @@ Requires JDK 17 and Android SDK Platform 35.
 
 The GitHub Actions workflow builds the debug APK. A release APK requires a separately provisioned signing key in CI secrets; no keystore is committed.
 
-## Required PMS alignment
+## Production blockers
 
-The PMS native client currently expects the service component `com.aurelia.paybridge/.ipc.PayBridgeService`, protocol v1, a valid SHA-256 signing-certificate fingerprint, and a `handshake` capability. Confirm the exact PMS-side permission, allowed PMS signing certificate, and IPC message schema against `Aurelia-apk` before connecting real devices. The service fails closed until the PMS signing-certificate allowlist is configured.
+1. Agree and deploy the Aurelia payment backend API, merchant credential vault, webhook verification, status polling, idempotency and audit ledger.
+2. Implement and sandbox-test provider adapters against merchant-enabled accounts; only then advertise provider capabilities.
+3. Add a durable payment operation contract to both APKs with request IDs, session binding, strict validation, timeout/recovery and tests.
+4. Provision matching PMS/Pay Bridge release signing, rotate certificates safely, and verify the installed pair on real supported Android devices.
+5. Run CI, dependency resolution, Android instrumentation, provider sandbox and end-to-end PMS folio tests. No live charge should be enabled before all gates pass.
 
-## Provider source references
+## Official provider references
 
-- Razorpay Android Standard SDK: https://razorpay.com/docs/payments/payment-gateway/android-integration/standard/
-- Cashfree Android SDK: https://www.cashfree.com/docs/payments/online/mobile/android
-- PayU Android Core SDK: https://docs.payu.in/docs/integration-steps-android-core-sdk
-- PayU Android Customer Browser: https://docs.payu.in/docs/integration-steps-android-customer-browser
-- PayU PhonePe Intent SDK instructions: https://docs.payu.in/docs/integration-steps-android-phonepe-sdk
-
-Provider documentation and artifact versions can change. Revalidate before upgrading or releasing.
+- Razorpay: https://razorpay.com/docs/payments/payment-gateway/android-integration/standard/
+- Cashfree: https://www.cashfree.com/docs/payments/online/mobile/android
+- PayU Core: https://docs.payu.in/docs/integration-steps-android-core-sdk
+- PayU Custom Browser: https://docs.payu.in/docs/integration-steps-android-customer-browser
+- PayU PhonePe Intent: https://docs.payu.in/docs/integration-steps-android-phonepe-sdk
