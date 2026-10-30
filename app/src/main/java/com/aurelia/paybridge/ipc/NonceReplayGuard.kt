@@ -2,7 +2,14 @@ package com.aurelia.paybridge.ipc
 
 /**
  * Bounded, process-lifetime replay protection for PMS handshake nonces.
- * Call with Android elapsedRealtime(), not wall-clock time.
+ *
+ * Uses Android elapsedRealtime(), not wall-clock time. When capacity is reached,
+ * new nonces are rejected until an entry expires; unexpired replay records are
+ * never evicted to make room for new requests.
+ *
+ * This is defense in depth, not durable replay prevention: process death clears
+ * this in-memory cache. The PMS must also validate its outstanding random nonce
+ * and enforce a short handshake timeout.
  */
 internal class NonceReplayGuard(
     private val ttlMillis: Long = 10 * 60 * 1000L,
@@ -26,12 +33,8 @@ internal class NonceReplayGuard(
         }
 
         if (accepted.containsKey(nonce)) return false
-        while (accepted.size >= maxEntries) {
-            val oldest = accepted.entries.iterator()
-            if (!oldest.hasNext()) break
-            oldest.next()
-            oldest.remove()
-        }
+        if (accepted.size >= maxEntries) return false
+
         accepted[nonce] = nowElapsedMillis
         return true
     }
