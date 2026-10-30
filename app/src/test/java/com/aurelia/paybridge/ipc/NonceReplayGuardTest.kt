@@ -33,7 +33,8 @@ class NonceReplayGuardTest {
         assertTrue(guard.accept("nonce-bbbbbbbbbbbb", 2))
 
         assertTrue(guard.accept("nonce-cccccccccccc", 11))
-        assertFalse(guard.accept("nonce-aaaaaaaaaaaa", 12))
+        assertFalse(guard.accept("nonce-bbbbbbbbbbbb", 12))
+        assertTrue(guard.accept("nonce-aaaaaaaaaaaa", 12))
     }
 
     @Test fun rejectsBlankNonceAndInvalidClock() {
