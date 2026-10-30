@@ -24,7 +24,7 @@ A provider key ID/public identifier may be delivered at runtime where the provid
 
 The service is exported for the explicit PMS component and protected by the signature permission `com.aurelia.paybridge.permission.BIND_PAY_BRIDGE`. Both APKs must be signed by the same approved certificate for Android's signature permission to be granted. The service independently verifies the Binder caller UID, PMS package ownership and shared signer before responding.
 
-Protocol v1 advertises only `handshake`. The service processes messages on a dedicated HandlerThread and rejects reused nonces within a bounded, ten-minute, process-lifetime replay cache. A process restart clears that in-memory cache; nonce unpredictability and signer/UID authorization remain required. No payment, refund, provider-management, or reconciliation messages are implemented or advertised.
+Protocol v1 advertises only `handshake`. The service processes messages on a dedicated HandlerThread and rejects reused nonces within a bounded, ten-minute, process-lifetime replay cache. Expired records are pruned; when all cache slots contain unexpired records, new handshakes are rejected rather than evicting a live replay record. A process restart clears the in-memory cache, so this is not durable replay prevention. PMS must generate an unpredictable nonce, validate the exact outstanding nonce echo, and enforce its handshake timeout. No payment, refund, provider-management, or reconciliation messages are implemented or advertised.
 
 ## Payment result handling
 
