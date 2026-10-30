@@ -16,7 +16,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Set to the PMS APK signing certificate SHA-256 before enabling IPC.
         // Blank value intentionally rejects all PMS callers.
-        buildConfigField("String", "PMS_SIGNING_CERT_SHA256", "\"\\\"\\\"")
+        buildConfigField("String", "PMS_SIGNING_CERT_SHA256", "\"\"")
     }
 
     buildFeatures { buildConfig = true }
