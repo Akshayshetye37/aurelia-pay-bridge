@@ -28,8 +28,11 @@ internal class NonceReplayGuard(
 
         val iterator = accepted.entries.iterator()
         while (iterator.hasNext()) {
-            val age = nowElapsedMillis - iterator.next().value
-            if (age >= ttlMillis || age < 0) iterator.remove()
+            val acceptedAt = iterator.next().value
+            // elapsedRealtime() is monotonic. If a caller supplies a regressed
+            // timestamp, fail closed and preserve all replay records.
+            if (nowElapsedMillis < acceptedAt) return false
+            if (nowElapsedMillis - acceptedAt >= ttlMillis) iterator.remove()
         }
 
         if (accepted.containsKey(nonce)) return false
