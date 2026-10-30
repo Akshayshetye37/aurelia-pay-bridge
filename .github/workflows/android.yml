@@ -21,8 +21,6 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          # v3 defaults to the removed legacy "tools" package. Install only
-          # platform-tools here; the Android platform/build-tools are requested below.
           packages: "platform-tools"
       - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
@@ -31,10 +29,21 @@ jobs:
           gradle-version: "8.11.1"
       - name: Generate Gradle wrapper
         run: gradle wrapper --gradle-version 8.11.1
+      - name: Generate and verify merged debug manifest
+        run: |
+          ./gradlew processDebugMainManifest
+          python3 scripts/verify-merged-manifest.py
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
       - name: Build debug APK
         run: ./gradlew assembleDebug
+      - name: Verify APK and print signing certificate
+        run: |
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$APK"
+          apksigner verify --verbose "$APK"
+          apksigner verify --print-certs "$APK"
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
           name: aurelia-pay-bridge-debug-apk
