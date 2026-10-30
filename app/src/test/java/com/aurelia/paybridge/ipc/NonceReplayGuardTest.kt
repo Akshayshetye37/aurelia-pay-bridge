@@ -17,12 +17,23 @@ class NonceReplayGuardTest {
         assertTrue(guard.accept("nonce-123456789012345", 1010))
     }
 
-    @Test fun evictsOldestEntryWhenCacheIsFull() {
+    @Test fun rejectsNewNonceWhenCacheIsFullWithoutEvictingLiveEntries() {
         val guard = NonceReplayGuard(ttlMillis = 10_000, maxEntries = 2)
         assertTrue(guard.accept("nonce-aaaaaaaaaaaa", 1))
         assertTrue(guard.accept("nonce-bbbbbbbbbbbb", 2))
-        assertTrue(guard.accept("nonce-cccccccccccc", 3))
-        assertTrue(guard.accept("nonce-aaaaaaaaaaaa", 4))
+
+        assertFalse(guard.accept("nonce-cccccccccccc", 3))
+        assertFalse(guard.accept("nonce-aaaaaaaaaaaa", 4))
+        assertFalse(guard.accept("nonce-bbbbbbbbbbbb", 5))
+    }
+
+    @Test fun acceptsNewNonceAfterOldEntryExpiresAtCapacity() {
+        val guard = NonceReplayGuard(ttlMillis = 10, maxEntries = 2)
+        assertTrue(guard.accept("nonce-aaaaaaaaaaaa", 1))
+        assertTrue(guard.accept("nonce-bbbbbbbbbbbb", 2))
+
+        assertTrue(guard.accept("nonce-cccccccccccc", 11))
+        assertFalse(guard.accept("nonce-aaaaaaaaaaaa", 12))
     }
 
     @Test fun rejectsBlankNonceAndInvalidClock() {
