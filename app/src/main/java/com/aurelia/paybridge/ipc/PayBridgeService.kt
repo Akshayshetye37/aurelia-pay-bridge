@@ -60,9 +60,10 @@ class PayBridgeService : Service() {
         }
 
         // A nonce is single-use for the lifetime of this service process. Expired
-        // entries are pruned and the cache is bounded to prevent unbounded growth.
+        // entries are pruned. At capacity, new handshakes fail closed rather than
+        // evicting an unexpired replay record. Process death still clears this cache.
         if (!nonceReplayGuard.accept(nonce, SystemClock.elapsedRealtime())) {
-            Log.w(TAG, "Rejected replayed Pay Bridge handshake nonce")
+            Log.w(TAG, "Rejected duplicate nonce or handshake while replay cache is saturated")
             return false
         }
 
