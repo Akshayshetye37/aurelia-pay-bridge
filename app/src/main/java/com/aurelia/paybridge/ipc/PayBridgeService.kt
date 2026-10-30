@@ -9,8 +9,14 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.util.Log
+import org.json.JSONArray
 import java.security.MessageDigest
 
+/**
+ * PMS-facing IPC endpoint. Android's signature permission gates binding; this
+ * service independently checks the caller UID, package name and signer before
+ * returning any protocol data.
+ */
 class PayBridgeService : Service() {
     private val messenger by lazy {
         Messenger(Handler(Looper.getMainLooper(), ::handleMessage))
@@ -21,25 +27,39 @@ class PayBridgeService : Service() {
     private fun handleMessage(message: Message): Boolean {
         if (message.what != PayBridgeProtocol.MSG_HANDSHAKE_REQUEST) return false
         val replyTo = message.replyTo ?: return false
+
         if (!isAuthorizedPmsCaller(message.sendingUid)) {
-            Log.w(TAG, "Rejected IPC caller UID \${message.sendingUid}")
+            Log.w(TAG, "Rejected unauthorised IPC caller UID ${message.sendingUid}")
             return false
         }
 
         val request = message.data ?: Bundle.EMPTY
+        val minVersion = request.getInt(PayBridgeProtocol.KEY_PROTOCOL_MIN, -1)
+        val maxVersion = request.getInt(PayBridgeProtocol.KEY_PROTOCOL_MAX, -1)
         val nonce = request.getString(PayBridgeProtocol.KEY_NONCE) ?: return false
-        val version = request.getInt(PayBridgeProtocol.KEY_PROTOCOL_VERSION, -1)
-        if (version != PayBridgeProtocol.PROTOCOL_VERSION || nonce.length !in 16..256) return false
+        val requestedPackage = request.getString("packageName") ?: return false
+
+        if (requestedPackage != PayBridgeProtocol.PMS_PACKAGE ||
+            minVersion > PayBridgeProtocol.PROTOCOL_VERSION ||
+            maxVersion < PayBridgeProtocol.PROTOCOL_VERSION ||
+            minVersion < 1 || maxVersion < minVersion ||
+            nonce.length !in 16..256 ||
+            !nonce.matches(Regex("[A-Za-z0-9._:-]+"))) {
+            return false
+        }
 
         val response = Message.obtain(null, PayBridgeProtocol.MSG_HANDSHAKE_RESPONSE).apply {
             data = Bundle().apply {
                 putInt(PayBridgeProtocol.KEY_PROTOCOL_VERSION, PayBridgeProtocol.PROTOCOL_VERSION)
                 putString(PayBridgeProtocol.KEY_NONCE, nonce)
                 putString(PayBridgeProtocol.KEY_PACKAGE_NAME, packageName)
-                putString(PayBridgeProtocol.KEY_CERT_SHA256, ownSigningCertSha256())
-                putStringArray(PayBridgeProtocol.KEY_CAPABILITIES, PayBridgeProtocol.CAPABILITIES)
+                putString(
+                    PayBridgeProtocol.KEY_CAPABILITIES_JSON,
+                    JSONArray(PayBridgeProtocol.CAPABILITIES.toList()).toString()
+                )
             }
         }
+
         return try {
             replyTo.send(response)
             true
@@ -50,18 +70,15 @@ class PayBridgeService : Service() {
     }
 
     private fun isAuthorizedPmsCaller(uid: Int): Boolean {
-        val expected = PayBridgeProtocol.EXPECTED_PMS_CERT_SHA256
-            .replace(":", "")
-            .uppercase()
-        if (!expected.matches(Regex("[A-F0-9]{64}"))) return false
-
         val packages = packageManager.getPackagesForUid(uid) ?: return false
-        return packages.any { packageName ->
-            runCatching { signingCertSha256(packageName) == expected }.getOrDefault(false)
+        if (PayBridgeProtocol.PMS_PACKAGE !in packages) return false
+        return try {
+            packageManager.checkSignatures(PayBridgeProtocol.PMS_PACKAGE, packageName) ==
+                PackageManager.SIGNATURE_MATCH
+        } catch (_: Exception) {
+            false
         }
     }
-
-    private fun ownSigningCertSha256(): String = signingCertSha256(packageName)
 
     @Suppress("DEPRECATION")
     private fun signingCertSha256(targetPackage: String): String {
@@ -75,8 +92,9 @@ class PayBridgeService : Service() {
         } else {
             info.signatures
         } ?: throw SecurityException("No signing certificate")
-        val digest = MessageDigest.getInstance("SHA-256").digest(signatures.first().toByteArray())
-        return digest.joinToString("") { "%02X".format(it) }
+        require(signatures.size == 1) { "Expected one current APK signer" }
+        val digest = MessageDigest.getInstance("SHA-256").digest(signatures[0].toByteArray())
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
     companion object {
