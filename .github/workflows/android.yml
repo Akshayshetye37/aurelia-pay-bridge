@@ -41,8 +41,8 @@ jobs:
         run: |
           APK="$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)"
           test -n "$APK"
-          apksigner verify --verbose "$APK"
-          apksigner verify --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
           echo "APK_PATH=$APK" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
