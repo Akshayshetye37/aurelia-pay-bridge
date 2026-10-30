@@ -41,11 +41,19 @@ These dependencies are not proof of SDK resolution, runtime compatibility, or co
 
 Requires JDK 17 and Android SDK Platform 35.
 
+Run the tests and build the debug APK:
+
 ```bash
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
-The GitHub Actions workflow builds the debug APK. A release APK requires a separately provisioned signing key in CI secrets; no keystore is committed.
+The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Install it on a connected Android device with:
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+The GitHub Actions workflow runs manifest verification, unit tests, debug APK assembly, and APK signature verification, then uploads the debug APK as the `aurelia-pay-bridge-debug-apk` artifact. A release APK requires a separately provisioned signing key in CI secrets; no keystore is committed. Debug signing is for development only and must not be used for production pairing.
 
 ## Production blockers
 
