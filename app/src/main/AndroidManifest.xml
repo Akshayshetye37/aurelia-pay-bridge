@@ -2,9 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Cashfree documents these intent queries for its UPI Intent flow.
-         Keep only if the Cashfree UPI Intent adapter is shipped/enabled. -->
+    <!-- Defined by Pay Bridge and requested by the PMS client. Signature-level
+         protection requires both APKs to be signed by the same release identity. -->
+    <permission
+        android:name="com.aurelia.paybridge.permission.BIND_PAY_BRIDGE"
+        android:protectionLevel="signature" />
+
     <queries>
+        <package android:name="com.aurelia.pms" />
         <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="upi" /></intent>
         <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="tez" /></intent>
         <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="gpay" /></intent>
@@ -32,7 +37,7 @@
         <service
             android:name=".ipc.PayBridgeService"
             android:exported="true"
-            android:permission="com.aurelia.pms.permission.BIND_PAY_BRIDGE">
+            android:permission="com.aurelia.paybridge.permission.BIND_PAY_BRIDGE">
             <intent-filter>
                 <action android:name="com.aurelia.paybridge.BIND" />
             </intent-filter>
