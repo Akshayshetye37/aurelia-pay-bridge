@@ -9,7 +9,6 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.util.Log
-import com.aurelia.paybridge.BuildConfig
 import java.security.MessageDigest
 
 class PayBridgeService : Service() {
@@ -23,7 +22,7 @@ class PayBridgeService : Service() {
         if (message.what != PayBridgeProtocol.MSG_HANDSHAKE_REQUEST) return false
         val replyTo = message.replyTo ?: return false
         if (!isAuthorizedPmsCaller(message.sendingUid)) {
-            Log.w(TAG, "Rejected IPC caller UID ${message.sendingUid}")
+            Log.w(TAG, "Rejected IPC caller UID \${message.sendingUid}")
             return false
         }
 
@@ -51,7 +50,7 @@ class PayBridgeService : Service() {
     }
 
     private fun isAuthorizedPmsCaller(uid: Int): Boolean {
-        val expected = BuildConfig.PMS_SIGNING_CERT_SHA256
+        val expected = PayBridgeProtocol.EXPECTED_PMS_CERT_SHA256
             .replace(":", "")
             .uppercase()
         if (!expected.matches(Regex("[A-F0-9]{64}"))) return false

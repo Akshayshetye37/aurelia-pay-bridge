@@ -13,7 +13,9 @@ object PayBridgeProtocol {
     const val KEY_CERT_SHA256 = "certSha256"
     const val KEY_CAPABILITIES = "capabilities"
 
-    // Only handshake is advertised in this foundation build. Do not advertise
-    // payment/refund/provider-management until those operations are implemented.
+    // Configure from the approved PMS release certificate before deployment.
+    // Empty by default: the service rejects every caller until configured.
+    const val EXPECTED_PMS_CERT_SHA256 = ""
+
     val CAPABILITIES = arrayOf("handshake")
 }
