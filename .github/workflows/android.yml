@@ -18,7 +18,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          # v3 defaults to the removed legacy "tools" package. Install only
+          # platform-tools here; the Android platform/build-tools are requested below.
+          packages: "platform-tools"
       - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
