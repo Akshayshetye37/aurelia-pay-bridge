@@ -81,7 +81,7 @@ A wrong-signer build may be blocked at Android's permission layer before the Bri
 
 ## Evidence capture
 
-Capture and retain:
+CI additionally parses the actual AGP merged debug manifest and asserts that the PMS package visibility query, exported service, signature permission, launcher activity, INTERNET permission, application label, theme, backup setting and cleartext setting survive manifest merging. CI also runs a same-nonce concurrent-request unit test; exactly one request may be accepted.\n\nCapture and retain:
 
 - Git commit SHA for each repository.
 - GitHub Actions run URLs and final conclusions.
