@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Defined by Pay Bridge and requested by the PMS client. Signature-level
@@ -19,6 +19,7 @@
     </queries>
 
     <application
+        tools:replace="android:label"
         android:allowBackup="false"
         android:label="Aurelia Pay Bridge"
         android:supportsRtl="true"
