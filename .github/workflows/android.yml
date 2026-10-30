@@ -37,6 +37,15 @@ jobs:
         run: ./gradlew testDebugUnitTest
       - name: Build debug APK
         run: ./gradlew assembleDebug
+      - name: Build release variant APK
+        run: ./gradlew assembleRelease
+      - name: Verify release APK output
+        run: |
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$APK"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 1
+          echo "Release APK built. Signing status depends on configured release signing; no production keystore is configured in this repository."
       - name: Verify APK and print signing certificate
         run: |
           APK="$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)"
@@ -46,5 +55,5 @@ jobs:
           echo "APK_PATH=$APK" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
-          name: aurelia-pay-bridge-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: aurelia-pay-bridge-release-variant-apk
+          path: app/build/outputs/apk/release/*.apk
