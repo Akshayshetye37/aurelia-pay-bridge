@@ -10,7 +10,6 @@ import android.os.Message
 import android.os.Messenger
 import android.util.Log
 import org.json.JSONArray
-import java.security.MessageDigest
 
 /**
  * PMS-facing IPC endpoint. Android's signature permission gates binding; this
@@ -78,23 +77,6 @@ class PayBridgeService : Service() {
         } catch (_: Exception) {
             false
         }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun signingCertSha256(targetPackage: String): String {
-        val info = if (android.os.Build.VERSION.SDK_INT >= 28) {
-            packageManager.getPackageInfo(targetPackage, PackageManager.GET_SIGNING_CERTIFICATES)
-        } else {
-            packageManager.getPackageInfo(targetPackage, PackageManager.GET_SIGNATURES)
-        }
-        val signatures = if (android.os.Build.VERSION.SDK_INT >= 28) {
-            info.signingInfo?.apkContentsSigners
-        } else {
-            info.signatures
-        } ?: throw SecurityException("No signing certificate")
-        require(signatures.size == 1) { "Expected one current APK signer" }
-        val digest = MessageDigest.getInstance("SHA-256").digest(signatures[0].toByteArray())
-        return digest.joinToString("") { "%02x".format(it) }
     }
 
     companion object {
