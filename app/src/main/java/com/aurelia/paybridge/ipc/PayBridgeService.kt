@@ -4,24 +4,36 @@ import android.app.Service
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
-import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import android.os.SystemClock
 import android.util.Log
 import org.json.JSONArray
 
 /**
  * PMS-facing IPC endpoint. Android's signature permission gates binding; this
- * service independently checks the caller UID, package name and signer before
- * returning any protocol data.
+ * service independently checks the Binder caller UID, package and shared signer.
+ * Handshake processing runs on a dedicated thread, never the main application thread.
  */
 class PayBridgeService : Service() {
-    private val messenger by lazy {
-        Messenger(Handler(Looper.getMainLooper(), ::handleMessage))
+    private lateinit var ipcThread: HandlerThread
+    private lateinit var messenger: Messenger
+    private val nonceReplayGuard = NonceReplayGuard()
+
+    override fun onCreate() {
+        super.onCreate()
+        ipcThread = HandlerThread("AureliaPayBridgeIpc").apply { start() }
+        messenger = Messenger(Handler(ipcThread.looper, ::handleMessage))
     }
 
     override fun onBind(intent: android.content.Intent?): IBinder = messenger.binder
+
+    override fun onDestroy() {
+        ipcThread.quitSafely()
+        super.onDestroy()
+    }
 
     private fun handleMessage(message: Message): Boolean {
         if (message.what != PayBridgeProtocol.MSG_HANDSHAKE_REQUEST) return false
@@ -36,7 +48,7 @@ class PayBridgeService : Service() {
         val minVersion = request.getInt(PayBridgeProtocol.KEY_PROTOCOL_MIN, -1)
         val maxVersion = request.getInt(PayBridgeProtocol.KEY_PROTOCOL_MAX, -1)
         val nonce = request.getString(PayBridgeProtocol.KEY_NONCE) ?: return false
-        val requestedPackage = request.getString("packageName") ?: return false
+        val requestedPackage = request.getString(PayBridgeProtocol.KEY_PACKAGE_NAME) ?: return false
 
         if (requestedPackage != PayBridgeProtocol.PMS_PACKAGE ||
             minVersion > PayBridgeProtocol.PROTOCOL_VERSION ||
@@ -44,6 +56,13 @@ class PayBridgeService : Service() {
             minVersion < 1 || maxVersion < minVersion ||
             nonce.length !in 16..256 ||
             !nonce.matches(Regex("[A-Za-z0-9._:-]+"))) {
+            return false
+        }
+
+        // A nonce is single-use for the lifetime of this service process. Expired
+        // entries are pruned and the cache is bounded to prevent unbounded growth.
+        if (!nonceReplayGuard.accept(nonce, SystemClock.elapsedRealtime())) {
+            Log.w(TAG, "Rejected replayed Pay Bridge handshake nonce")
             return false
         }
 
