@@ -1,19 +1,17 @@
 # Aurelia Pay Bridge
 
-Standalone Android companion application for **Aurelia PMS**. The project repository owns the Android application, native payment-bridge IPC endpoint, provider SDK integration work, security controls and build/release workflow.
+Standalone Android companion application for **Aurelia PMS**. This repository owns the Android application, native PMS IPC endpoint, provider SDK integration work, security controls and Android build workflow.
 
 ## Project location
 
 - **GitHub repository:** https://github.com/Akshayshetye37/aurelia-pay-bridge
+- **Project root:** repository root `/` (local clone directory: `aurelia-pay-bridge/`)
 - **Working branch:** `feature/payment-ipc-contract-foundation`
 - **Default branch:** `main`
-- **Current working-branch commit:** `4504505ba23cbdb2e7bbbf28af3d4a966782ea80`
 - **Open pull request:** https://github.com/Akshayshetye37/aurelia-pay-bridge/pull/1 (draft; not merged)
-- **CI workflow:** [Android CI](.github/workflows/android.yml)
+- **Android CI:** `.github/workflows/android.yml`
 
-The repository root is the project root. When cloned locally, the directory is wherever the user chooses to clone it; there is no fixed local computer path recorded in this repository.
-
-Clone and enter the project:
+Clone:
 
 ```bash
 git clone https://github.com/Akshayshetye37/aurelia-pay-bridge.git
@@ -25,93 +23,84 @@ git switch feature/payment-ipc-contract-foundation
 
 | Path | Purpose |
 |---|---|
-| `app/src/main/AndroidManifest.xml` | Android permissions, package visibility, launcher activity and exported Pay Bridge service |
-| `app/src/main/java/com/aurelia/paybridge/ipc/` | IPC protocol, Messenger service and nonce replay protection |
-| `app/src/main/java/com/aurelia/paybridge/ui/` | Android application UI |
-| `app/src/main/res/` | Android layouts and resources |
-| `app/src/test/java/com/aurelia/paybridge/ipc/` | JVM unit tests for protocol and replay protection |
-| `docs/SECURITY_MODEL.md` | Security boundaries and trust model |
-| `docs/IPC_INTEGRATION_VERIFICATION_V1.md` | Handshake integration verification |
-| `docs/RESERVED_PAYMENT_IPC_CONTRACT.md` | Reserved PMS/payment message contract; not executable payment functionality |
-| `docs/PROVIDER_SDK_MATRIX.md` | Provider SDK dependency and integration inventory |
-| `docs/BUILD_AND_RELEASE.md` | Build and release guidance |
+| `app/` | Android application module |
+| `app/src/main/AndroidManifest.xml` | Permissions, package visibility, launcher activity and exported IPC service |
+| `app/src/main/java/com/aurelia/paybridge/ipc/` | Messenger IPC protocol, service and nonce replay protection |
+| `app/src/main/java/com/aurelia/paybridge/ui/` | Android UI |
+| `app/src/test/` | JVM unit tests |
+| `docs/` | Security, IPC contract, provider dependency and release documentation |
 | `scripts/verify-merged-manifest.py` | Security-critical merged-manifest validation |
-| `.github/workflows/android.yml` | CI, release signing, APK verification and draft release publishing |
+| `.github/workflows/android.yml` | Android CI and protected release build workflow |
+| `build.gradle.kts`, `settings.gradle.kts` | Gradle project configuration |
 
 ## Current implementation status
 
-**This is not a production payment application.** The current implementation provides a fail-closed, PMS-compatible protocol-v1 handshake. It does not yet create payments, execute provider checkout, issue refunds, reconcile transactions, or deliver verified payment events.
-
-The bridge advertises only the `handshake` capability. Payment, refund, reconciliation, payment-event and provider-management identifiers are reserved contract constants only. They are not executable operations and must not be treated as implemented features.
+**This is not a production payment application.** The current implementation provides a fail-closed protocol-v1 PMS handshake. It does not create payments, execute provider checkout, issue refunds, reconcile transactions or deliver verified payment events.
 
 ### Implemented foundation
 
 - Android application shell and launcher.
-- Exported Messenger IPC service protected by a signature-level Android permission.
-- Caller UID/package validation and matching PMS/Pay Bridge signing-certificate check.
-- Protocol-v1 handshake with protocol-range validation and nonce replay protection.
+- Exported Messenger IPC service protected by signature-level Android permission.
+- Binder caller UID/package validation and PMS/Bridge signing-certificate comparison.
+- Protocol-v1 handshake, protocol-range validation and bounded nonce replay protection.
 - Dedicated IPC handler thread.
-- Contract constants and tests mirrored against the PMS-side protocol.
+- PMS-compatible reserved protocol constants and regression tests.
 - Merged-manifest security verification script.
-- CI workflow configured for unit tests, debug APK assembly and production-signed release APK verification.
 
 ### Not implemented / not production-ready
 
 - Razorpay, Cashfree, PayU and PhonePe checkout adapters.
-- Executable payment, payment-status, refund, reconciliation and event IPC handlers.
+- Executable payment, status, refund, reconciliation and event IPC handlers.
 - Aurelia Payment Backend API integration.
-- Merchant credential management or provider secret storage in this APK.
-- Provider webhook verification, authoritative payment state, durable retry/outbox and reconciliation.
+- Merchant credential vault, provider webhook verification, authoritative payment state, idempotency and reconciliation.
 - End-to-end PMS folio settlement integration.
-- Verified matching release-signature pairing on installed PMS and Pay Bridge APKs.
-- Provider sandbox certification and real-device end-to-end payment tests.
+- Verified matching release-signature pairing on installed PMS and Bridge APKs.
+- Provider sandbox certification and real-device end-to-end tests.
+
+The Bridge advertises **only** the `handshake` capability. Reserved operation IDs and capability strings are not executable functionality.
 
 ## PMS IPC contract
 
-The service component is `com.aurelia.paybridge/.ipc.PayBridgeService`. It mirrors the contract in the PMS repository's `android/templates/PayBridgeProtocol.java` and is consumed by `android/templates/PayBridgeClient.java`.
-
 - PMS package: `com.aurelia.pms`
 - Pay Bridge package: `com.aurelia.paybridge`
-- Service permission: `com.aurelia.paybridge.permission.BIND_PAY_BRIDGE`
-- Handshake request/result message IDs: `100` / `101`
-- Reserved payment/refund/reconciliation/event message IDs are documented in `docs/RESERVED_PAYMENT_IPC_CONTRACT.md`.
+- Service: `com.aurelia.paybridge/.ipc.PayBridgeService`
+- Binding permission: `com.aurelia.paybridge.permission.BIND_PAY_BRIDGE`
+- Handshake request/result: message IDs `100` / `101`
 
-The service checks that the Binder caller UID owns the expected PMS package and that PMS and Pay Bridge have the same Android signing identity. The Android signature permission independently restricts binding to applications signed with the same approved certificate.
+The contract mirrors the PMS repository's `android/templates/PayBridgeProtocol.java` and `PayBridgeClient.java`. The Bridge checks that the Binder caller UID owns the expected PMS package and that PMS and Bridge share an Android signing identity. The signature-level permission independently gates binding.
 
-Do not use debug signing for a production pairing. One controlled release signing identity must be used for both APKs. Keystores and passwords must be stored in protected release infrastructure, never committed to this repository or pasted into chat.
+Do not use debug signing for production pairing. Both APKs must use the same controlled signing identity. Keystores and passwords must remain in protected release infrastructure, never in source control or chat.
 
 ## Payment architecture and security boundary
 
-- Aurelia PMS remains local-first and owns hotel operations, bookings, folios and hotel accounting.
-- Aurelia Pay Bridge is the native Android checkout companion. It must not become the authoritative payment ledger.
-- The Aurelia Payment Backend is intended to own tenant-isolated provider credentials, payment sessions, provider API calls, webhook verification, authoritative payment/refund status, idempotency and reconciliation.
-- Each hotel tenant must use its own authenticated account, property permissions and merchant/provider credentials.
+- PMS remains local-first and owns hotel operations, bookings, folios and hotel accounting.
+- Pay Bridge is the native checkout companion, not the authoritative payment ledger.
+- The central Aurelia Payment Backend is intended to own tenant-isolated provider credentials, payment sessions, provider API calls, webhook verification, authoritative payment/refund state, idempotency and reconciliation.
+- Each hotel tenant uses its own authenticated account, property permissions and merchant/provider credentials.
 - **Never put provider API secrets, webhook secrets, PayU salt, PhonePe client secrets or private keys in either APK.**
-- PMS requests a payment session from the backend. Pay Bridge receives only short-lived, transaction-scoped checkout data.
-- SDK callbacks are user-interface signals, not proof of payment. PMS must settle a folio only after authoritative backend verification.
-- A lost or ambiguous callback must remain pending/unknown until reconciled; it must never be assumed paid or failed.
+- PMS obtains a payment session from the backend; Bridge receives only short-lived transaction-scoped checkout data.
+- SDK callbacks are UI signals, not proof of payment. PMS may settle a folio only after authoritative backend verification.
+- Ambiguous outcomes remain pending/unknown until reconciled.
 - Google Drive or local/server backup destinations are for backup and file exchange, not a live shared payment database.
 
 The backend is a separate project/deployment responsibility. This repository does not contain a deployed payment backend or production provider credentials.
 
-## SDK dependency inventory
+## Provider SDK dependencies
 
-The following dependencies are declared in `app/build.gradle.kts`; declaration does not prove that an adapter is implemented, that dependencies resolve in CI, or that SDKs are compatible at runtime.
+The following are declared in `app/build.gradle.kts`. Dependency declaration does not prove resolution, runtime compatibility or an implemented adapter:
 
 - Razorpay Android Standard Checkout: `com.razorpay:checkout:1.6.41`
 - Cashfree PG Android: `com.cashfree.pg:api:2.6.1`
-- PayU Core Android: `in.payu:payu-sdk:7.12.3`
+- PayU Core: `in.payu:payu-sdk:7.12.3`
 - PayU Custom Browser: `in.payu:payu-custom-browser:7.16.6`
 - PayU UPI SDK: `in.payu:upisdk:1.8.8`
 - PhonePe Intent SDK via PayU: `in.payu:phonepe-intent:1.8.9`
 
-Keep only dependencies required by implemented and tested adapters before production release.
+Remove dependencies that are not used by implemented and tested adapters before production.
 
-## Local build
+## Build
 
-Requirements: JDK 17, Android SDK Platform 35 and Android build tools 35.0.0. The CI workflow generates the Gradle wrapper using Gradle 8.11.1.
-
-Run:
+Requirements: JDK 17, Android SDK Platform 35 and Build Tools 35.0.0. The CI workflow bootstraps Gradle 8.11.1 and generates the wrapper during each run.
 
 ```bash
 gradle wrapper --gradle-version 8.11.1
@@ -119,43 +108,39 @@ gradle wrapper --gradle-version 8.11.1
 ./gradlew assembleDebug
 ```
 
-Debug APK output:
+Debug APK output: `app/build/outputs/apk/debug/app-debug.apk`.
 
-```
-app/build/outputs/apk/debug/app-debug.apk
-```
+A debug APK is for development only and is not suitable for production pairing with a release-signed PMS APK.
 
-Install on a connected device:
+## CI and release
 
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
-
-A debug APK is for development only. It is not suitable for production pairing with a release-signed PMS APK.
-
-## CI and release status
-
-The workflow at `.github/workflows/android.yml` performs merged-manifest validation, JVM unit tests and debug APK assembly. For push builds (not pull requests), it also requires the protected signing secrets, builds a release APK, verifies its APK signature and attempts to publish the APK as a **draft prerelease GitHub Release**.
-
-Required GitHub Actions secrets:
+The workflow performs merged-manifest validation, JVM unit tests and debug APK assembly. Push builds additionally require these protected GitHub Actions secrets before release signing and APK signature verification:
 
 - `AURELIA_RELEASE_KEYSTORE_BASE64`
 - `AURELIA_RELEASE_KEYSTORE_PASSWORD`
 - `AURELIA_RELEASE_KEY_ALIAS`
 - `AURELIA_RELEASE_KEY_PASSWORD`
 
-The current working-branch commit has **not passed CI**. Build #53 (run ID `41228163301`) failed on three attempts; the GitHub job-log download returned `BlobNotFound`, so the failing step has not yet been identified. No successful release APK for the current commit has been verified. Do not treat the earlier successful build #47 as a build of the current source.
+Successful push builds attempt to publish a production-signed APK as a **draft prerelease GitHub Release**. A draft release is for controlled testing, not an assertion of production readiness.
 
-Latest run: https://github.com/Akshayshetye37/aurelia-pay-bridge/actions/runs/41228163301
+**Latest inspected source commit:** `4504505ba23cbdb2e7bbbf28af3d4a966782ea80` (as recorded in the branch README at inspection time). The branch advanced afterward to `56de7a18831dbef999b45e925aa77230cef9c461`. The latest inspected workflow run for that commit (run #56, PR validation) failed almost immediately; job logs were unavailable from GitHub's artifact endpoint, so the failing step could not be identified. No successful APK build for that exact source commit has been verified. Check the live [Actions runs](https://github.com/Akshayshetye37/aurelia-pay-bridge/actions) before treating CI as green.
 
 ## Production completion gates
 
-1. Confirm and deploy the central Aurelia Payment Backend API and its tenant isolation, merchant credential vault, webhook verification, payment state, idempotency, audit and reconciliation services.
-2. Implement provider adapters and test each one against provider sandbox accounts.
-3. Implement and test executable IPC operations consistently in both PMS and Pay Bridge; advertise a capability only after its handler is implemented and verified.
-4. Complete matching release signing for both APKs and verify the signing-certificate fingerprints of the actual installed APKs.
+1. Finalize and deploy the central Aurelia Payment Backend with tenant isolation, merchant credential vault, webhook verification, payment state, idempotency, audit and reconciliation.
+2. Implement provider adapters and test each against provider sandbox accounts.
+3. Implement executable IPC operations in both PMS and Bridge; advertise a capability only after the handler is implemented and verified.
+4. Use matching controlled release signing for both APKs and verify installed certificate fingerprints.
 5. Complete payment lifecycle, timeout, process-death, duplicate request, refund, reconciliation and PMS folio tests.
 6. Pass CI, dependency resolution, Android device tests and provider sandbox end-to-end tests before enabling live charges.
+
+## Documentation
+
+- [Security model](docs/SECURITY_MODEL.md)
+- [IPC integration verification v1](docs/IPC_INTEGRATION_VERIFICATION_V1.md)
+- [Reserved payment IPC contract](docs/RESERVED_PAYMENT_IPC_CONTRACT.md)
+- [Provider SDK matrix](docs/PROVIDER_SDK_MATRIX.md)
+- [Build and release](docs/BUILD_AND_RELEASE.md)
 
 ## Official provider references
 
