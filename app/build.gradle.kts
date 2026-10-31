@@ -7,15 +7,30 @@ android {
     namespace = "com.aurelia.paybridge"
     compileSdk = 35
 
+    val releaseStorePath = System.getenv("AURELIA_RELEASE_KEYSTORE_PATH")
+    val releaseStorePassword = System.getenv("AURELIA_RELEASE_KEYSTORE_PASSWORD")
+    val releaseKeyAlias = System.getenv("AURELIA_RELEASE_KEY_ALIAS")
+    val releaseKeyPassword = System.getenv("AURELIA_RELEASE_KEY_PASSWORD")
+    val releaseSigningConfigured = listOf(
+        releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword
+    ).all { !it.isNullOrBlank() }
+
     signingConfigs {
-        // Test-only signing so CI produces an installable APK. Replace with a controlled
-        // shared keystore before pairing this app with Aurelia PMS or distributing production builds.
-        getByName("debug")
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = file(releaseStorePath!!)
+                storePassword = releaseStorePassword!!
+                keyAlias = releaseKeyAlias!!
+                keyPassword = releaseKeyPassword!!
+            }
+        }
     }
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("debug")
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
