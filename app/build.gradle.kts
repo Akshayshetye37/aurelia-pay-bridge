@@ -28,6 +28,9 @@ android {
 
     buildTypes {
         getByName("release") {
+            // CI builds fail closed when release credentials are missing. Local
+            // developer builds may still assemble an unsigned release variant, but
+            // must never mistake it for a distributable/signed artifact.
             if (releaseSigningConfigured) {
                 signingConfig = signingConfigs.getByName("release")
             }
