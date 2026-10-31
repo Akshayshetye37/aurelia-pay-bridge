@@ -6,6 +6,19 @@ This document records the operation identifiers shared with the PMS contract at
 `android/templates/PayBridgeProtocol.java`. It is a compatibility foundation,
 not an executable payment protocol or evidence of a working payment backend.
 
+## PMS dependency parity
+
+The Bridge protocol constants mirror the PMS Java contract, including the
+explicit service class, package identity, bind action, protocol range and
+handshake message names. The manifest exports only the named
+`PayBridgeService`, protected by the signature-level binding permission.
+
+PMS also gates provider configuration on `provider.management`. Pay Bridge
+defines that capability identifier but deliberately does **not** advertise it:
+there is no provider-management IPC handler or backend-backed provider
+configuration operation yet. This prevents PMS from exposing a feature the
+Bridge cannot execute.
+
 ## Implemented now
 
 - Explicit bound-service Messenger handshake (request 100 / response 101).
@@ -27,7 +40,7 @@ not an executable payment protocol or evidence of a working payment backend.
 | Payment event | 500 | 501 acknowledgement | Reserved; rejected |
 
 The service currently handles only message 100. It returns `false` for every
-other message. Do not change this until the PMS client and trusted backend are
+other message, including any future provider-management operation. Do not change this until the PMS client and trusted backend are
 ready to implement the same reviewed contract.
 
 ## Reserved payload keys
