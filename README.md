@@ -70,3 +70,7 @@ The GitHub Actions workflow runs manifest verification, unit tests, debug APK as
 - PayU Core: https://docs.payu.in/docs/integration-steps-android-core-sdk
 - PayU Custom Browser: https://docs.payu.in/docs/integration-steps-android-customer-browser
 - PayU PhonePe Intent: https://docs.payu.in/docs/integration-steps-android-phonepe-sdk
+
+## Production release signing
+
+Production release builds require the four protected GitHub Actions secrets: `AURELIA_RELEASE_KEYSTORE_BASE64`, `AURELIA_RELEASE_KEYSTORE_PASSWORD`, `AURELIA_RELEASE_KEY_ALIAS`, and `AURELIA_RELEASE_KEY_PASSWORD`. The release workflow fails closed if any are missing. Keep the original keystore and passwords backed up securely; the same signing identity must be used for Aurelia PMS and Aurelia Pay Bridge.
