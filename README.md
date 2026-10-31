@@ -4,7 +4,7 @@ Standalone Android companion application for Aurelia PMS. This repository owns n
 
 ## Current implementation status
 
-This repository is **not yet a production payment application**. The current app implements a fail-closed, PMS-compatible protocol-v1 handshake only. It does not create charges, invoke provider SDKs, issue refunds, reconcile transactions, or report verified payments. The app advertises only `handshake`.
+This repository is **not yet a production payment application**. The current app implements a fail-closed, PMS-compatible protocol-v1 handshake only. It does not create charges, invoke provider SDKs, issue refunds, reconcile transactions, or report verified payments. The app advertises only `handshake`. It defines the PMS-gated `provider.management` capability identifier for contract parity but does not advertise it because provider-management IPC handlers do not exist yet.
 
 ## PMS IPC contract
 
