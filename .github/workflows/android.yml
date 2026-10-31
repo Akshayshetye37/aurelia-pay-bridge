@@ -6,8 +6,7 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Least privilege for the build. The draft-release publishing step needs contents:write;
-# pull requests from forks receive GitHub's restricted token regardless.
+# Default to read-only. The release job receives write access only for push events.
 permissions:
   contents: read
 
