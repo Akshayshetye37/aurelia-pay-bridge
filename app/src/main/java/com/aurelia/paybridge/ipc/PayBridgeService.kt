@@ -98,7 +98,7 @@ class PayBridgeService : Service() {
     }
 
     private fun isAuthorizedPmsCaller(uid: Int): Boolean {
-        if (uid == PackageManager.INVALID_UID) return false
+        if (uid < 0) return false
         val packages = packageManager.getPackagesForUid(uid) ?: return false
         if (PayBridgeProtocol.PMS_PACKAGE !in packages) return false
         return try {
