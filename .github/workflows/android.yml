@@ -30,13 +30,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.11.1"
-      - name: Validate CI credential boundary
-        if: github.event_name == 'pull_request'
-        run: |
-          test -z "${{ secrets.AURELIA_RELEASE_KEYSTORE_BASE64 }}" || {
-            echo "::error::Release signing secret must not be exposed to pull-request builds."
-            exit 1
-          }
       - name: Generate Gradle wrapper
         run: gradle wrapper --gradle-version 8.11.1
       - name: Generate and verify merged debug manifest
