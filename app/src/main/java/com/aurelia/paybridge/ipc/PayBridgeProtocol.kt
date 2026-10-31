@@ -11,11 +11,19 @@ package com.aurelia.paybridge.ipc
 object PayBridgeProtocol {
     const val ACTION_BIND = "com.aurelia.paybridge.BIND"
     const val PMS_PACKAGE = "com.aurelia.pms"
+    const val BRIDGE_PACKAGE = "com.aurelia.paybridge"
+    const val BRIDGE_SERVICE = "com.aurelia.paybridge.ipc.PayBridgeService"
     const val BIND_PERMISSION = "com.aurelia.paybridge.permission.BIND_PAY_BRIDGE"
+    const val PROTOCOL_MIN = 1
+    const val PROTOCOL_MAX = 1
     const val PROTOCOL_VERSION = 1
 
-    const val MSG_HANDSHAKE_REQUEST = 100
-    const val MSG_HANDSHAKE_RESPONSE = 101
+    // Names mirror the PMS Java contract; REQUEST/RESPONSE aliases remain for
+    // existing Kotlin callers.
+    const val MSG_HANDSHAKE = 100
+    const val MSG_HANDSHAKE_RESULT = 101
+    const val MSG_HANDSHAKE_REQUEST = MSG_HANDSHAKE
+    const val MSG_HANDSHAKE_RESPONSE = MSG_HANDSHAKE_RESULT
 
     // Reserved operation IDs. The service deliberately rejects these today.
     const val MSG_CREATE_PAYMENT = 200
@@ -51,6 +59,9 @@ object PayBridgeProtocol {
     const val KEY_EVIDENCE_ID = "evidenceId"
 
     const val CAP_HANDSHAKE = "handshake"
+    // PMS requires this capability before exposing provider configuration.
+    // It remains reserved until provider-management IPC has real handlers.
+    const val CAP_PROVIDER_MANAGEMENT = "provider.management"
     const val CAP_PAYMENT_CREATE = "payment.create"
     const val CAP_PAYMENT_STATUS = "payment.status"
     const val CAP_REFUND_CREATE = "refund.create"
