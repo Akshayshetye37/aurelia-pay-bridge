@@ -8,8 +8,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PayBridgeProtocolTest {
-    @Test fun protocolVersionIsOne() {
+    @Test fun protocolVersionAndPmsIdentityContractMatch() {
         assertEquals(1, PayBridgeProtocol.PROTOCOL_VERSION)
+        assertEquals(1, PayBridgeProtocol.PROTOCOL_MIN)
+        assertEquals(1, PayBridgeProtocol.PROTOCOL_MAX)
+        assertEquals("com.aurelia.pms", PayBridgeProtocol.PMS_PACKAGE)
+        assertEquals("com.aurelia.paybridge", PayBridgeProtocol.BRIDGE_PACKAGE)
+        assertEquals(
+            "com.aurelia.paybridge.ipc.PayBridgeService",
+            PayBridgeProtocol.BRIDGE_SERVICE
+        )
+        assertEquals("com.aurelia.paybridge.BIND", PayBridgeProtocol.ACTION_BIND)
+        assertEquals(100, PayBridgeProtocol.MSG_HANDSHAKE)
+        assertEquals(101, PayBridgeProtocol.MSG_HANDSHAKE_RESULT)
     }
 
     @Test fun pmsAndBridgePermissionContractMatches() {
@@ -54,6 +65,11 @@ class PayBridgeProtocolTest {
         assertEquals(401, PayBridgeProtocol.MSG_RECONCILE_RESULT)
         assertEquals(500, PayBridgeProtocol.MSG_PAYMENT_EVENT)
         assertEquals(501, PayBridgeProtocol.MSG_EVENT_ACK)
+    }
+
+    @Test fun providerManagementIsReservedUntilItsIpcHandlerExists() {
+        assertEquals("provider.management", PayBridgeProtocol.CAP_PROVIDER_MANAGEMENT)
+        assertFalse(PayBridgeProtocol.CAPABILITIES.contains(PayBridgeProtocol.CAP_PROVIDER_MANAGEMENT))
     }
 
     @Test fun reservedCapabilitiesAreNotAdvertised() {
