@@ -104,14 +104,39 @@ jobs:
           KEY_PASSWORD: ${{ secrets.AURELIA_RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "$KEYSTORE_B64" || { echo "::error::Missing AURELIA_RELEASE_KEYSTORE_BASE64"; exit 1; }
-          test -n "$KEYSTORE_PASSWORD" || { echo "::error::Missing AURELIA_RELEASE_KEYSTORE_PASSWORD"; exit 1; }
-          test -n "$KEY_ALIAS" || { echo "::error::Missing AURELIA_RELEASE_KEY_ALIAS"; exit 1; }
-          test -n "$KEY_PASSWORD" || { echo "::error::Missing AURELIA_RELEASE_KEY_PASSWORD"; exit 1; }
-          mkdir -p "$RUNNER_TEMP/aurelia-signing"
-          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/aurelia-signing/release.jks"
-          test -s "$RUNNER_TEMP/aurelia-signing/release.jks"
-          keytool -list -keystore "$RUNNER_TEMP/aurelia-signing/release.jks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          for name in KEYSTORE_B64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              case "$name" in
+                KEYSTORE_B64) secret_name=AURELIA_RELEASE_KEYSTORE_BASE64 ;;
+                KEYSTORE_PASSWORD) secret_name=AURELIA_RELEASE_KEYSTORE_PASSWORD ;;
+                KEY_ALIAS) secret_name=AURELIA_RELEASE_KEY_ALIAS ;;
+                KEY_PASSWORD) secret_name=AURELIA_RELEASE_KEY_PASSWORD ;;
+              esac
+              echo "::error::Missing or empty GitHub Actions secret: $secret_name"
+              exit 1
+            fi
+          done
+
+          SIGNING_DIR="$RUNNER_TEMP/aurelia-signing"
+          KEYSTORE="$SIGNING_DIR/release.jks"
+          mkdir -p "$SIGNING_DIR"
+
+          if ! printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE"; then
+            echo "::error::AURELIA_RELEASE_KEYSTORE_BASE64 is not valid Base64. Re-encode the original PMS keystore file."
+            exit 1
+          fi
+          if [[ ! -s "$KEYSTORE" ]]; then
+            echo "::error::Decoded keystore is empty. AURELIA_RELEASE_KEYSTORE_BASE64 must encode the binary keystore file, not its path."
+            exit 1
+          fi
+
+          if ! keytool -list -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>"$SIGNING_DIR/keytool-error.log"; then
+            echo "::error::Keystore could not be opened with the supplied store password and alias. Check the original PMS keystore, store password, and exact alias. Secret values are intentionally not printed."
+            sed -E 's/(password|passphrase)[^[:cntrl:]]*/[redacted]/Ig' "$SIGNING_DIR/keytool-error.log" || true
+            exit 1
+          fi
+
+          echo "Keystore file decoded and alias located. Private-key password will be verified by the signed Gradle release build."
       - name: Build production-signed release APK
         env:
           AURELIA_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/aurelia-signing/release.jks
