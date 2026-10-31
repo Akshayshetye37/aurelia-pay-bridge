@@ -1,6 +1,7 @@
 package com.aurelia.paybridge.ipc
 
 import android.app.Service
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
@@ -28,34 +29,39 @@ class PayBridgeService : Service() {
         messenger = Messenger(Handler(ipcThread.looper, ::handleMessage))
     }
 
-    override fun onBind(intent: android.content.Intent?): IBinder = messenger.binder
+    override fun onBind(intent: Intent?): IBinder = messenger.binder
 
     override fun onDestroy() {
-        ipcThread.quitSafely()
+        if (::ipcThread.isInitialized) {
+            ipcThread.quitSafely()
+        }
         super.onDestroy()
     }
 
     private fun handleMessage(message: Message): Boolean {
         if (message.what != PayBridgeProtocol.MSG_HANDSHAKE_REQUEST) return false
-        val replyTo = message.replyTo ?: return false
 
+        // Check caller identity before processing any caller-controlled payload.
         if (!isAuthorizedPmsCaller(message.sendingUid)) {
             Log.w(TAG, "Rejected unauthorised IPC caller UID ${message.sendingUid}")
             return false
         }
+        val replyTo = message.replyTo ?: return false
 
         val request = message.data ?: Bundle.EMPTY
         val minVersion = request.getInt(PayBridgeProtocol.KEY_PROTOCOL_MIN, -1)
         val maxVersion = request.getInt(PayBridgeProtocol.KEY_PROTOCOL_MAX, -1)
         val nonce = request.getString(PayBridgeProtocol.KEY_NONCE) ?: return false
-        val requestedPackage = request.getString(PayBridgeProtocol.KEY_PACKAGE_NAME) ?: return false
+        val requestedPackage =
+            request.getString(PayBridgeProtocol.KEY_PACKAGE_NAME) ?: return false
 
         if (requestedPackage != PayBridgeProtocol.PMS_PACKAGE ||
             minVersion > PayBridgeProtocol.PROTOCOL_VERSION ||
             maxVersion < PayBridgeProtocol.PROTOCOL_VERSION ||
             minVersion < 1 || maxVersion < minVersion ||
             nonce.length !in 16..256 ||
-            !nonce.matches(Regex("[A-Za-z0-9._:-]+"))) {
+            !NONCE_PATTERN.matches(nonce)
+        ) {
             return false
         }
 
@@ -69,7 +75,10 @@ class PayBridgeService : Service() {
 
         val response = Message.obtain(null, PayBridgeProtocol.MSG_HANDSHAKE_RESPONSE).apply {
             data = Bundle().apply {
-                putInt(PayBridgeProtocol.KEY_PROTOCOL_VERSION, PayBridgeProtocol.PROTOCOL_VERSION)
+                putInt(
+                    PayBridgeProtocol.KEY_PROTOCOL_VERSION,
+                    PayBridgeProtocol.PROTOCOL_VERSION
+                )
                 putString(PayBridgeProtocol.KEY_NONCE, nonce)
                 putString(PayBridgeProtocol.KEY_PACKAGE_NAME, packageName)
                 putString(
@@ -82,18 +91,21 @@ class PayBridgeService : Service() {
         return try {
             replyTo.send(response)
             true
-        } catch (e: Exception) {
-            Log.w(TAG, "Could not reply to PMS handshake", e)
+        } catch (exception: Exception) {
+            Log.w(TAG, "Could not reply to PMS handshake", exception)
             false
         }
     }
 
     private fun isAuthorizedPmsCaller(uid: Int): Boolean {
+        if (uid == PackageManager.INVALID_UID) return false
         val packages = packageManager.getPackagesForUid(uid) ?: return false
         if (PayBridgeProtocol.PMS_PACKAGE !in packages) return false
         return try {
-            packageManager.checkSignatures(PayBridgeProtocol.PMS_PACKAGE, packageName) ==
-                PackageManager.SIGNATURE_MATCH
+            packageManager.checkSignatures(
+                PayBridgeProtocol.PMS_PACKAGE,
+                packageName
+            ) == PackageManager.SIGNATURE_MATCH
         } catch (_: Exception) {
             false
         }
@@ -101,5 +113,6 @@ class PayBridgeService : Service() {
 
     companion object {
         private const val TAG = "AureliaPayBridge"
+        private val NONCE_PATTERN = Regex("[A-Za-z0-9._:-]+")
     }
 }
