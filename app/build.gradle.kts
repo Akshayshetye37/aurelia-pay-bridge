@@ -7,6 +7,18 @@ android {
     namespace = "com.aurelia.paybridge"
     compileSdk = 35
 
+    signingConfigs {
+        // Test-only signing so CI produces an installable APK. Replace with a controlled
+        // shared keystore before pairing this app with Aurelia PMS or distributing production builds.
+        getByName("debug")
+    }
+
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
     defaultConfig {
         applicationId = "com.aurelia.paybridge"
         minSdk = 23
