@@ -27,7 +27,7 @@ class PayBridgeProtocolTest {
     @Test fun capabilitiesUsePmsJsonWireFormat() {
         val encoded = JSONArray(PayBridgeProtocol.CAPABILITIES.toList()).toString()
         assertEquals("""["handshake"]""", encoded)
-        assertEquals("""["handshake"]""", encoded)
+        assertEquals("handshake", JSONArray(encoded).getString(0))
     }
 
     @Test fun protocolRangeMustContainVersionOne() {
