@@ -37,26 +37,42 @@ jobs:
         run: ./gradlew testDebugUnitTest
       - name: Build debug APK
         run: ./gradlew assembleDebug
-      - name: Build release variant APK
+      - name: Require production signing secrets
+        if: github.event_name != 'pull_request'
+        env:
+          KEYSTORE_B64: ${{ secrets.AURELIA_RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.AURELIA_RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.AURELIA_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.AURELIA_RELEASE_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_B64" || { echo "Missing AURELIA_RELEASE_KEYSTORE_BASE64"; exit 1; }
+          test -n "$KEYSTORE_PASSWORD" || { echo "Missing AURELIA_RELEASE_KEYSTORE_PASSWORD"; exit 1; }
+          test -n "$KEY_ALIAS" || { echo "Missing AURELIA_RELEASE_KEY_ALIAS"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "Missing AURELIA_RELEASE_KEY_PASSWORD"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/aurelia-signing"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/aurelia-signing/release.jks"
+          test -s "$RUNNER_TEMP/aurelia-signing/release.jks"
+      - name: Build production-signed release APK
+        if: github.event_name != 'pull_request'
+        env:
+          AURELIA_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/aurelia-signing/release.jks
+          AURELIA_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.AURELIA_RELEASE_KEYSTORE_PASSWORD }}
+          AURELIA_RELEASE_KEY_ALIAS: ${{ secrets.AURELIA_RELEASE_KEY_ALIAS }}
+          AURELIA_RELEASE_KEY_PASSWORD: ${{ secrets.AURELIA_RELEASE_KEY_PASSWORD }}
         run: ./gradlew assembleRelease
-      - name: Verify release APK output
+      - name: Verify production release APK signature
+        if: github.event_name != 'pull_request'
         run: |
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
           test -n "$APK"
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 1
-          echo "Release APK built. Signing status depends on configured release signing; no production keystore is configured in this repository."
-      - name: Verify release APK signature
-        run: |
-          APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
-          test -n "$APK"
-          test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
-          echo "TEST SIGNING ONLY: release variant uses this repository's ephemeral Android debug keystore."
-          echo "Do not pair with PMS or distribute as production until both APKs use the same controlled signing identity."
-      - uses: actions/upload-artifact@v4
+      - name: Upload production-signed APK
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
         with:
-          name: aurelia-pay-bridge-release-test-signed-apk
+          name: aurelia-pay-bridge-production-release-apk
           path: app/build/outputs/apk/release/*.apk
           retention-days: 1
