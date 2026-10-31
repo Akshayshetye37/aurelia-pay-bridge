@@ -123,7 +123,7 @@ The workflow performs merged-manifest validation, JVM unit tests and debug APK a
 
 Successful push builds attempt to publish a production-signed APK as a **draft prerelease GitHub Release**. A draft release is for controlled testing, not an assertion of production readiness.
 
-**Latest inspected source commit:** `4504505ba23cbdb2e7bbbf28af3d4a966782ea80` (as recorded in the branch README at inspection time). The branch advanced afterward to `56de7a18831dbef999b45e925aa77230cef9c461`. The latest inspected workflow run for that commit (run #56, PR validation) failed almost immediately; job logs were unavailable from GitHub's artifact endpoint, so the failing step could not be identified. No successful APK build for that exact source commit has been verified. Check the live [Actions runs](https://github.com/Akshayshetye37/aurelia-pay-bridge/actions) before treating CI as green.
+**CI status:** the original branch revision's Actions runs failed almost immediately and returned no step details/logs through the available GitHub endpoint. During this inspection, fixes were committed to the workflow and service. The latest source commits still require a fresh successful CI run before any APK can be considered verified. Track the live [Actions runs](https://github.com/Akshayshetye37/aurelia-pay-bridge/actions); do not infer a successful build from a queued run or an older commit.
 
 ## Production completion gates
 
