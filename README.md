@@ -74,3 +74,21 @@ The GitHub Actions workflow runs manifest verification, unit tests, debug APK as
 ## Production release signing
 
 Production release builds require the four protected GitHub Actions secrets: `AURELIA_RELEASE_KEYSTORE_BASE64`, `AURELIA_RELEASE_KEYSTORE_PASSWORD`, `AURELIA_RELEASE_KEY_ALIAS`, and `AURELIA_RELEASE_KEY_PASSWORD`. The release workflow fails closed if any are missing. Keep the original keystore and passwords backed up securely; the same signing identity must be used for Aurelia PMS and Aurelia Pay Bridge.
+
+
+## Shared PMS IPC contract foundation
+
+The PMS repository reserves message identifiers for payment creation/status,
+refunds, reconciliation and payment events. This Pay Bridge branch now mirrors
+those identifiers, payload-key names and basic payload limits in
+`PayBridgeProtocol.kt`, with regression tests for contract parity.
+
+**These are reserved identifiers only.** The service still implements handshake
+message 100 only, returns no payment/refund/reconciliation capabilities, and
+rejects every other message. No provider checkout, refund, payment status,
+event delivery or backend call has been enabled by this change.
+
+See [docs/RESERVED_PAYMENT_IPC_CONTRACT.md](docs/RESERVED_PAYMENT_IPC_CONTRACT.md)
+for the reserved message map, data ownership and implementation gates. The
+backend repository and deployed API contract must be confirmed before executable
+payment operations are implemented.
