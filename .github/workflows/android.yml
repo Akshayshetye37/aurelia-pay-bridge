@@ -46,14 +46,17 @@ jobs:
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 1
           echo "Release APK built. Signing status depends on configured release signing; no production keystore is configured in this repository."
-      - name: Verify APK and print signing certificate
+      - name: Verify release APK signature
         run: |
-          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' -print -quit)"
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
           test -n "$APK"
+          test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
-          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+          echo "TEST SIGNING ONLY: release variant uses this repository's ephemeral Android debug keystore."
+          echo "Do not pair with PMS or distribute as production until both APKs use the same controlled signing identity."
       - uses: actions/upload-artifact@v4
         with:
-          name: aurelia-pay-bridge-release-variant-apk
+          name: aurelia-pay-bridge-release-test-signed-apk
           path: app/build/outputs/apk/release/*.apk
+          retention-days: 1
