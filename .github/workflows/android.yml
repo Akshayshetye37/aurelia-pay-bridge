@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -69,10 +69,16 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 1
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK"
-      - name: Upload production-signed APK
-        if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: aurelia-pay-bridge-production-release-apk
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 1
+      - name: Publish production-signed APK as a draft GitHub release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK_PATH: app/build/outputs/apk/release/app-release.apk
+          RELEASE_TAG: pay-bridge-build-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          test -s "$APK_PATH"
+          gh release create "$RELEASE_TAG" "$APK_PATH#Aurelia Pay Bridge production-signed APK" \
+            --draft \
+            --prerelease \
+            --title "Aurelia Pay Bridge build ${{ github.run_number }}" \
+            --notes "Automated production-signed APK. Source commit: ${{ github.sha }}. APK signature verification completed in this workflow. Draft release for controlled testing; payment provider execution and real-device payment certification remain separate requirements."
