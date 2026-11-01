@@ -13,11 +13,14 @@ Passing repository CI or comparing source files does not pass this verification.
 - PMS package: `com.aurelia.pms`
 - Bridge package: `com.aurelia.paybridge`
 - Bridge service: `com.aurelia.paybridge.ipc.PayBridgeService`
+- Bind action: `com.aurelia.paybridge.BIND`
 - Binding permission: `com.aurelia.paybridge.permission.BIND_PAY_BRIDGE`
 - Protocol: v1
 - Request/response: Messenger message 100 / 101
 - Advertised capability: `handshake` only
 - Payment, refund, provider configuration and reconciliation operations: not implemented
+
+The PMS client must bind using both the explicit service component and the exact bind action. Bridge rejects a null or unexpected action. The PMS-side source template must retain `new Intent(PayBridgeProtocol.BIND_ACTION)` before setting the explicit component.
 
 ## Signing prerequisite
 
@@ -30,7 +33,7 @@ Before installation, inspect both APK certificates with Android SDK `apksigner v
 ## Build and installation
 
 1. Wait for successful Pay Bridge GitHub Actions run: unit tests and debug APK build must both pass.
-2. Build PMS from the verified `feature/pay-bridge-platform` HEAD.
+2. Build PMS from the verified `feature/multi-provider-payment-backend` HEAD.
 3. Sign both APKs with the same controlled test certificate.
 4. Verify the package IDs and certificate digests.
 5. Install both APKs on the same Android device:
@@ -48,7 +51,7 @@ The exact APK paths depend on the build output; do not assume the CI debug artif
 |---|---|---|
 | P01 | Install both correctly signed APKs | Both packages install |
 | P02 | Launch PMS with Bridge installed | PMS discovers Bridge |
-| P03 | PMS binds to explicit Bridge service | Binding succeeds |
+| P03 | PMS binds with explicit component and exact bind action | Binding succeeds |
 | P04 | Android signature permission | Binding is permitted for matching signer |
 | P05 | Binder UID and PMS package check | Bridge authorizes PMS caller |
 | P06 | Shared signer check | Bridge accepts matching signer |
@@ -67,21 +70,25 @@ Perform these only on a test device and test builds.
 | ID | Test | Expected result |
 |---|---|---|
 | N01 | Install Bridge signed with a different certificate | PMS refuses trusted connection; signature permission also blocks protected binding |
-| N02 | Request with unsupported protocol range | Bridge does not return a successful handshake |
-| N03 | Request with malformed/short nonce | Bridge rejects request |
-| N04 | Replay the same nonce during one Bridge process lifetime | Bridge rejects duplicate |
-| N05 | PMS receives a response with wrong nonce | PMS rejects connection |
-| N06 | PMS receives wrong package name or protocol version | PMS rejects connection |
-| N07 | PMS receives malformed capabilities or no `handshake` capability | PMS rejects connection |
-| N08 | Delay bind/handshake beyond 10 seconds | PMS times out, clears connecting state and follows bounded retry policy |
-| N09 | Saturate replay cache with unexpired nonces | New handshakes fail closed; existing unexpired nonce records are not evicted |
-| N10 | Restart Bridge process | In-memory replay cache resets; document this limitation and verify a new random PMS nonce is used |
+| N02 | Bind using a null or unexpected action | Bridge returns no binder |
+| N03 | Request with unsupported protocol range | Bridge does not return a successful handshake |
+| N04 | Request with malformed/short nonce | Bridge rejects request |
+| N05 | Request with missing or extra Bundle fields | Bridge rejects request |
+| N06 | Replay the same nonce during one Bridge process lifetime | Bridge rejects duplicate |
+| N07 | PMS receives a response with wrong nonce | PMS rejects connection |
+| N08 | PMS receives wrong package name or protocol version | PMS rejects connection |
+| N09 | PMS receives malformed capabilities or no `handshake` capability | PMS rejects connection |
+| N10 | Delay bind/handshake beyond 10 seconds | PMS times out, clears connecting state and follows bounded retry policy |
+| N11 | Saturate replay cache with unexpired nonces | New handshakes fail closed; existing unexpired nonce records are not evicted |
+| N12 | Restart Bridge process | In-memory replay cache resets; document this limitation and verify a new random PMS nonce is used |
 
 A wrong-signer build may be blocked at Android's permission layer before the Bridge service can log a caller rejection. That is expected; do not interpret the absence of a service log as a failed permission test.
 
 ## Evidence capture
 
-CI additionally parses the actual AGP merged debug manifest and asserts that the PMS package visibility query, exported service, signature permission, launcher activity, INTERNET permission, application label, theme, backup setting and cleartext setting survive manifest merging. CI also runs a same-nonce concurrent-request unit test; exactly one request may be accepted.\n\nCapture and retain:
+CI additionally parses the actual AGP merged debug manifest and asserts that the PMS package visibility query, exported service, signature permission, launcher activity, INTERNET permission, application label, theme, backup setting and cleartext setting survive manifest merging. CI runs unit tests for the exact protocol-v1 handshake envelope and a same-nonce concurrent-request test; exactly one request may be accepted.
+
+Capture and retain:
 
 - Git commit SHA for each repository.
 - GitHub Actions run URLs and final conclusions.
@@ -105,7 +112,7 @@ The milestone passes only if:
 2. PMS CI build passes on the exact recorded HEAD.
 3. Both installed APKs have matching approved signing certificate digests.
 4. All positive tests P01-P13 pass.
-5. All applicable negative tests N01-N10 fail closed as specified.
+5. All applicable negative tests N01-N12 fail closed as specified.
 6. No payment operation is exposed or advertised by protocol v1.
 
 If physical-device tests have not been run, status must remain **SOURCE/CI VERIFIED — DEVICE IPC NOT VERIFIED**.
