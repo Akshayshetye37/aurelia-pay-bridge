@@ -74,3 +74,18 @@ The GitHub Actions workflow runs manifest verification, unit tests, debug APK as
 ## Production release signing
 
 Production release builds require the four protected GitHub Actions secrets: `AURELIA_RELEASE_KEYSTORE_BASE64`, `AURELIA_RELEASE_KEYSTORE_PASSWORD`, `AURELIA_RELEASE_KEY_ALIAS`, and `AURELIA_RELEASE_KEY_PASSWORD`. The release workflow fails closed if any are missing. Keep the original keystore and passwords backed up securely; the same signing identity must be used for Aurelia PMS and Aurelia Pay Bridge. Both release workflows pin the approved public SHA-256 certificate fingerprint (`562c833fcb8808b226d6b0c33633c9771a47ec63cca5c42d8ef16c4c7b92bf86`) and reject any APK signed by another certificate. Configure the exact same four keystore values in both repositories; the fingerprint is public certificate metadata, not a secret. The approved shared launcher artwork is `assets/aurelia-icon.jpg` and is installed by `scripts/install-launcher-icon.sh`. Debug APKs are not compatible with cross-app signature-protected IPC.
+
+## Diagnosing an installed signer mismatch
+
+If PMS displays `untrusted_signer`, compare the SHA-256 certificate digests of the **installed APKs**, not the keystore filename or the claim that the same keystore was selected. The PMS diagnostic reports the installed PMS and Pay Bridge fingerprints and the approved release fingerprint. A keystore may contain multiple aliases, an older APK may remain installed, and a distribution service may re-sign an APK.
+
+For a clean release-pair test:
+
+1. Download the PMS and Pay Bridge production release APKs from their respective successful GitHub Actions runs for the intended commits.
+2. Verify both package IDs and run `apksigner verify --print-certs` on each APK.
+3. Confirm both SHA-256 certificate digests exactly equal `562c833fcb8808b226d6b0c33633c9771a47ec63cca5c42d8ef16c4c7b92bf86`.
+4. Only after both artifacts pass verification, uninstall the older PMS and Pay Bridge installations and install the two verified release APKs.
+5. Retry the handshake and record the device result. CI success and matching certificates do not replace physical-device IPC verification.
+
+Never disable the signature-level permission or signer checks to suppress this error.
+
