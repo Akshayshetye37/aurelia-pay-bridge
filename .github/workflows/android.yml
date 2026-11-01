@@ -64,6 +64,8 @@ jobs:
         run: ./gradlew assembleRelease
       - name: Verify production release APK signature
         if: github.event_name != 'pull_request'
+        env:
+          EXPECTED_CERT_SHA256: ${{ secrets.AURELIA_SHARED_CERT_SHA256 }}
         run: |
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
           test -n "$APK"
@@ -71,6 +73,17 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 1
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK" | tee "$RUNNER_TEMP/aurelia-pay-bridge-certificate.txt"
+          expected="${EXPECTED_CERT_SHA256//:/}"
+          expected="${expected,,}"
+          actual="$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}' "$RUNNER_TEMP/aurelia-pay-bridge-certificate.txt")"
+          if [[ -z "$expected" ]]; then
+            echo "::error::Missing AURELIA_SHARED_CERT_SHA256. Configure the same certificate fingerprint in both PMS and Pay Bridge repository secrets."
+            exit 1
+          fi
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Pay Bridge signing certificate does not match AURELIA_SHARED_CERT_SHA256."
+            exit 1
+          fi
       - name: Upload production-signed APK
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
