@@ -75,7 +75,7 @@ Do not use debug signing for production pairing. Both APKs must use the same con
 
 - PMS remains local-first and owns hotel operations, bookings, folios and hotel accounting.
 - Pay Bridge is the native checkout companion, not the authoritative payment ledger.
-- The central Aurelia Payment Backend is intended to own tenant-isolated provider credentials, payment sessions, provider API calls, webhook verification, authoritative payment/refund state, idempotency and reconciliation.
+- The central Aurelia Payment Backend is an optional deployment dependency at initial installation. Its base URL and tenant connection details must be configurable later from the app's Settings screen; installation and local PMS-to-Bridge connectivity must not require a server or cloud account. When no backend is configured or reachable, backend-dependent online payment actions remain unavailable and must fail closed. Once configured, the backend owns tenant-isolated provider credentials, payment sessions, provider API calls, webhook verification, authoritative payment/refund state, idempotency and reconciliation.
 - Each hotel tenant uses its own authenticated account, property permissions and merchant/provider credentials.
 - **Never put provider API secrets, webhook secrets, PayU salt, PhonePe client secrets or private keys in either APK.**
 - PMS obtains a payment session from the backend; Bridge receives only short-lived transaction-scoped checkout data.
@@ -83,7 +83,7 @@ Do not use debug signing for production pairing. Both APKs must use the same con
 - Ambiguous outcomes remain pending/unknown until reconciled.
 - Google Drive or local/server backup destinations are for backup and file exchange, not a live shared payment database.
 
-The backend is a separate project/deployment responsibility. This repository does not contain a deployed payment backend or production provider credentials.
+The backend is a separate project/deployment responsibility. This repository does not contain a deployed payment backend or production provider credentials. Backend configuration is not a prerequisite for installing or opening Pay Bridge; the app must support a later setup flow in Settings and clearly show whether the backend is unconfigured, connected or unavailable. Do not substitute local-only or SDK callback data for authoritative payment verification.
 
 ## Provider SDK dependencies
 
@@ -123,7 +123,7 @@ The workflow performs merged-manifest validation, JVM unit tests and debug APK a
 
 Successful push builds attempt to publish a production-signed APK as a **draft prerelease GitHub Release**. A draft release is for controlled testing, not an assertion of production readiness.
 
-**CI status:** the original branch revision's Actions runs failed almost immediately and returned no step details/logs through the available GitHub endpoint. During this inspection, fixes were committed to the workflow and service. The latest source commits still require a fresh successful CI run before any APK can be considered verified. Track the live [Actions runs](https://github.com/Akshayshetye37/aurelia-pay-bridge/actions); do not infer a successful build from a queued run or an older commit.
+**CI status (2026-11-01):** GitHub Actions run [#84](https://github.com/Akshayshetye37/aurelia-pay-bridge/actions/runs/41244218181), attempt 2, completed successfully on commit `17ab8982e1a5f5e499a395790e57c382edaf9722`. Both jobs passed: merged-manifest validation, JVM unit tests, debug assembly, production signing configuration validation, release APK build, APK package/signature verification, artifact upload and draft release publication. This verifies the CI build and APK signature process for that commit; it does **not** establish PMS certificate matching, device-level IPC operation, provider certification or production payment readiness. Check the live [Actions runs](https://github.com/Akshayshetye37/aurelia-pay-bridge/actions) for newer revisions.
 
 ## Production completion gates
 
