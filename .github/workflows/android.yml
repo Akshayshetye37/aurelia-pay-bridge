@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install approved Aurelia launcher artwork
+        run: bash scripts/install-launcher-icon.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
