@@ -29,8 +29,8 @@ Before installation, inspect both APK certificates with Android SDK `apksigner v
 
 ## Build and installation
 
-1. Wait for successful Pay Bridge GitHub Actions run: unit tests and debug APK build must both pass.
-2. Build PMS from the verified `feature/pay-bridge-platform` HEAD.
+1. Wait for a successful Pay Bridge GitHub Actions run on the selected commit. For the release-pair test, use the production-signed release artifact and confirm the workflow's certificate-verification step passed; a debug APK is not an acceptable substitute.
+2. Build PMS from the verified `feature/multi-provider-payment-backend` branch HEAD (or the explicitly selected PMS integration commit recorded for the test).
 3. Sign both APKs with the same controlled test certificate.
 4. Verify the package IDs and certificate digests.
 5. Install both APKs on the same Android device:
