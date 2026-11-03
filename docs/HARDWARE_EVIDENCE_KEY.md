@@ -24,6 +24,22 @@ The appliance, not the Bridge, must validate the certificate chain and Android K
 
 The Bridge currently exports the certificate chain but does not parse or validate the attestation extension. A returned chain is untrusted input until the appliance completes every check above. Google attestation roots and verification rules must be maintained server-side; do not pin a stale root in the APK.
 
+
+## Mandatory appliance rejection policy
+
+The following checks are hard enrollment gates. A failed check rejects that enrollment attempt; it must not be downgraded to a warning or retried with the same challenge:
+
+- **Challenge mismatch, expiry, or reuse:** permanently reject the enrollment attempt and consume/deny that challenge. A new owner-authorized attempt must receive a new random challenge.
+- **Untrusted attestation root:** reject if the validated chain does not terminate at a root in the currently maintained Google Android Key Attestation root set. Apply the current root rotation and certificate-revocation policy to the chain; do not accept an arbitrary self-signed root.
+- **Security level:** reject if either `attestationSecurityLevel` or `keymasterSecurityLevel` (also referred to as `keyMintSecurityLevel` in newer KeyMint terminology) is Software or Unknown. Accept only the explicitly supported TrustedEnvironment or StrongBox levels.
+- **Application identity:** reject unless the attested package name and signing-certificate digest exactly match the appliance's approved Bridge allow-list. Do not rely on client-reported package or signer metadata.
+- **Boot integrity:** reject unless the attested device is locked and the verified-boot state is `Verified`. If product policy later permits an exception, route it to explicit owner review; never auto-activate it.
+- **Key binding:** reject unless the attestation leaf public key exactly matches the submitted public key and all required attestation fields are internally consistent.
+
+Return a generic enrollment failure to the device. Record the precise failed verifier check, certificate fingerprints, challenge identifier, and diagnostic context in the appliance's protected audit log without logging owner credentials or private material.
+
+The Bridge exports the attestation chain and public key only. It never claims that a key is enrolled, trusted, or activated. Only the appliance can validate the chain, atomically register the key as pending activation, and later mark the device active after explicit owner authorization. A valid attestation alone does not activate a device.
+
 ## Signing boundary
 
 The API signs exact byte arrays only. It does not yet define a production canonical evidence envelope. Before any signed payload can be accepted as evidence, the protocol must specify versioning, domain separation, deterministic serialization (canonical CBOR or a strict length-prefixed binary format), request/job ID, device ID, folio binding, amount in minor units, currency, provider reference, server nonce, issued/expiry timestamps, and replay rules.
