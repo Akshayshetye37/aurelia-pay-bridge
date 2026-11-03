@@ -1,5 +1,59 @@
 # Aurelia Pay Bridge
 
+
+## Current delivery status and remaining work — 2026-11-03
+
+**Status: development only. No production payment execution, device enrollment, or live collection is enabled.**
+
+### Current source location
+
+- PMS: [Akshayshetye37/Aurelia-apk](https://github.com/Akshayshetye37/Aurelia-apk), branch `feature/multi-provider-payment-backend`.
+- Pay Bridge: [Akshayshetye37/aurelia-pay-bridge](https://github.com/Akshayshetye37/aurelia-pay-bridge), branch `feature/hardware-backed-evidence-key`.
+
+### Current PR #2 status
+
+[PR #2 — hardware-backed evidence signing key](https://github.com/Akshayshetye37/aurelia-pay-bridge/pull/2) remains **draft/open**.
+
+- CI run [41646944152](https://github.com/Akshayshetye37/aurelia-pay-bridge/actions/runs/41646944152): JVM unit tests passed; debug APK and Android instrumentation APK compilation passed.
+- CI did not execute the instrumentation test.
+- StrongBox/TEE generation, returned attestation chain, leaf/public-key match and software-key rejection still require supported physical-device testing.
+- Bridge exports the public key and attestation chain. It does not validate the chain, enroll the device, or activate the key.
+- Current protocol v1 advertises only `handshake`. No payment-execution or refund messages are implemented or enabled.
+
+### Remaining implementation — dependency order
+
+#### P0 — Bridge key lifecycle and physical validation
+
+- Stage newly generated keys separately; do not delete or replace the currently active key before the new key has passed appliance verification and owner-authorized activation.
+- Add safe promotion/rollback and explicit key-version handling for rotation.
+- Fail closed on unsupported/unknown hardware security levels.
+- Execute instrumentation tests on physical StrongBox and TEE-capable devices; record actual device/API level, security level, attestation-chain result and test outcome.
+- Test release-signed PMS/Bridge pairing on-device using the approved matching signing certificate.
+
+#### P0 — Appliance-side enrollment (tracked in [Issue #3](https://github.com/Akshayshetye37/aurelia-pay-bridge/issues/3))
+
+- Owner-authenticated challenge issuance, bound to property and intended device.
+- Appliance validation of Google's current Android Key Attestation trust roots, certificate revocation, challenge freshness/one-time use, package and signer identity, security levels, verified boot/device lock, patch policy and leaf-key binding.
+- Atomic registration as pending activation; explicit owner activation; visible Bridge activation state; revocation and safe rotation.
+- Do not accept evidence or device commands from unregistered, pending or revoked devices.
+
+#### P1 — Only after P0 acceptance
+
+- Define canonical signed evidence format, strict request/job/property/folio/amount/currency binding, server nonce, timestamp/expiry and replay protection.
+- Implement authenticated IPC contracts only after enrollment is live and validated. Keep payment-execution messages out of protocol v1 until the separate execution contract is approved.
+- Add provider SDK adapters only with server-created checkout sessions and independent server-side provider verification.
+- Add cancellation/status handling without blind retries; ambiguous provider outcomes must remain ambiguous until reconciled.
+
+#### P2 — Release acceptance
+
+- Physical-device IPC and key-attestation matrix.
+- Provider sandbox checkout, webhook signature validation, status reconciliation and refund tests.
+- Crash/restart/replay and revoked-device tests.
+- Signed PMS/Bridge APK pair verification and full folio/accounting E2E with the appliance.
+
+**Non-negotiable boundary:** a hardware-backed signature proves only that a key signed a bounded payload. It does not prove customer payment. Only the appliance may authorize accounting after independent provider-evidence verification. No live payments, no self-activation, no trust-all TLS, and no claims of deployment or physical acceptance without test evidence.
+
+
 Standalone Android companion application for Aurelia PMS. This repository owns native checkout UI, provider SDK adapters, and the authenticated Messenger IPC service consumed by Aurelia PMS.
 
 ## Current implementation status
