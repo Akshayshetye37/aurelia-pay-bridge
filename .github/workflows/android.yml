@@ -37,8 +37,8 @@ jobs:
           python3 scripts/verify-merged-manifest.py
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      - name: Build debug APK and compile device instrumentation tests
+        run: ./gradlew assembleDebug assembleDebugAndroidTest
       - name: Require production signing secrets
         if: github.event_name != 'pull_request'
         env:
